@@ -1,0 +1,98 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=iisi@641001
+      - MONGO_INITDB_DATABASE=Chatbot
+      - TZ=Asia/Taipei
+    ports:
+      - "27017:27017"          # 只在需要主機/外部直連時才保留
+    volumes:
+      - ${MONGODB_DATA}:/data/db  # MongoDB 資料
+      - ${MONGODB_INIT}:/docker-entrypoint-initdb.d  # 可選：放初始化 .js/.sh
+    # healthcheck:
+      # test: ["CMD-SHELL", "bash -lc '</dev/tcp/localhost/27017'"]
+      # interval: 60s
+      # timeout: 3s
+      # retries: 10
+
+  # 可選：Web 管理介面（http://localhost:8081）
+  # mongo-express:
+    # image: mongo-express:1
+    # container_name: mongo-express
+    # restart: unless-stopped
+    # depends_on:
+      # mongodb:
+        # condition: service_started
+    # environment:
+      # - ME_CONFIG_MONGODB_SERVER=mongodb
+      # - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+      # - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+      # - ME_CONFIG_MONGODB_ADMINPASSWORD=adminpw
+      # - ME_CONFIG_BASICAUTH=true
+      # - ME_CONFIG_BASICAUTH_USERNAME=admin
+      # - ME_CONFIG_BASICAUTH_PASSWORD=adminpw
+    # ports:
+      # - "8081:8081"
+  # sqlserver:
+    # image: mcr.microsoft.com/mssql/server:2019-latest
+    # container_name: sqlserver
+    # environment:
+      # - ACCEPT_EULA=Y
+      # - MSSQL_SA_PASSWORD=iisi@641001
+      # - MSSQL_PID=Developer
+    # ports:
+      # - "1433:1433"               # 需要外部工具連進來才要
+    # volumes:
+      # - ./mssql/backup:/var/opt/mssql/backup   # 匯出 .bak 用
+    # healthcheck:
+      # test: [ "CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "SA", "-P", "iisi@641001", "-Q", "SELECT 1", "-C", "-N" ]
+      # interval: 10s
+      # timeout: 3s
+      # retries: 10
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # 基本設定
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - TZ=Asia/Taipei
+      # 若未走反向代理，可維持預設；日後上網域/https 時再設定：
+      # - WEBHOOK_URL=https://your.domain.example/
+
+      # 安全性（直接對外時建議啟用）
+      # - N8N_SECURE_COOKIES=false   # 若純 http 可設為 false；https 時請改 true
+
+      # （選用）禁用全域節點/模板遙測與匯入
+      # - N8N_DIAGNOSTICS_ENABLED=false
+      # - N8N_TEMPLATES_ENABLED=false
+
+    # 將「本機資料夾」綁到容器內 /home/node/.n8n
+    # Windows 範例： "C:/data/n8n:/home/node/.n8n"
+    # Linux/Mac 範例： "/srv/n8n:/home/node/.n8n"
+    volumes:
+      - "${N8N_DATA}:/home/node/.n8n"
+
+    # 以 node 使用者啟動，避免資料夾內檔案成為 root 擁有者（Linux 上較有感）
+    user: "node"
+
+    # （可選）健康檢查：容器內檢查 Web 是否回應 200
+    # n8n 官方映像通常有 curl；若沒有可移除此段
+    # healthcheck:
+      # test: ["CMD", "bash", "-lc", "curl -fsS http://localhost:5678/ || exit 1"]
+      # interval: 10s
+      # timeout: 3s
+      # retries: 10
+      # start_period: 20s
+
+volumes:
+  mssql_data:
+  n8n_data:
