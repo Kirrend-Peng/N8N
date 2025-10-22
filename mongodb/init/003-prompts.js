@@ -51,7 +51,7 @@ db.prompts.insertOne({
   chatbot_id: "woofwoof", // 這要放 chatbot_info.bot_id
   title: "每日推播",
   purpose: "broadcast_daily",
-  content: "根據時間早、中、晚回覆勉勵、慰問的話,簡短回覆繁體中文",
+  content: "根據時間早、中、晚回覆勉勵、慰問的話,與提醒未來氣象資訊,簡短回覆繁體中文",
   createdAt: new Date(),
   updatedAt: new Date()
 });

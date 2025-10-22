@@ -1,0 +1,124 @@
+{
+  "name": "Get WeatherInfo",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -96,
+        -160
+      ],
+      "id": "9ff2b602-184b-4d4c-9490-09ba41a3814e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "url": "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "locationName",
+              "value": "臺北市"
+            },
+            {
+              "name": "format",
+              "value": "JSON"
+            },
+            {
+              "name": "timeTo",
+              "value": "={{$now.plus({ hours: 8 }).toFormat(\"yyyy-LL-dd'T'HH:mm:ss\")}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        -160
+      ],
+      "id": "33fb86cd-e073-4668-89b5-11095ccdc444",
+      "name": "F-C0032-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "aKFGQE9CuxMhHtMd",
+          "name": "Central Weather Administration"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "LocationName",
+              "value": "中正區"
+            },
+            {
+              "name": "format",
+              "value": "JSON"
+            },
+            {
+              "name": "timeTo",
+              "value": "={{$now.plus({ hours: 12 }).toFormat(\"yyyy-LL-dd'T'HH:mm:ss\")}}"
+            },
+            {
+              "name": "timeFrom",
+              "value": "={{$now.toFormat(\"yyyy-LL-dd'T'HH:mm:ss\")}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        32
+      ],
+      "id": "be73a004-0e53-4d01-8952-b575bd4fe334",
+      "name": "台北市未來3天氣象  F-D0047-061",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "aKFGQE9CuxMhHtMd",
+          "name": "Central Weather Administration"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "台北市未來3天氣象  F-D0047-061",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b28198a7-27fe-42ae-8907-e097d0c026c3",
+  "meta": {
+    "instanceId": "ce366878273a0c079b30629c5438592b1b601f9378d29abdf8727b9dd05db8f6"
+  },
+  "id": "FbEgJiBQIVN8mIzR",
+  "tags": []
+}

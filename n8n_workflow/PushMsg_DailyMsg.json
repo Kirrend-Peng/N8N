@@ -1,0 +1,288 @@
+{
+  "name": "PushMsg_DailyMsg",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4559e642-a76e-4896-8ebe-f3bc741d4210",
+              "name": "chatbot_id",
+              "value": "sunnycare",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -48,
+        48
+      ],
+      "id": "d87cabd7-03e8-4476-9d9d-d57e5bc373d8",
+      "name": "SetChatbotID"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "FbEgJiBQIVN8mIzR",
+          "mode": "list",
+          "cachedResultName": "Get WeatherInfo"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        48
+      ],
+      "id": "42b6bd8d-a66d-4811-9029-f6c075455fb0",
+      "name": "Call 'Get WeatherInfo'"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7,
+              "triggerAtMinute": 30
+            },
+            {
+              "triggerAtHour": 12
+            },
+            {
+              "triggerAtHour": 17
+            },
+            {
+              "triggerAtHour": 22
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -304,
+        48
+      ],
+      "id": "8f6e63c3-58e0-4fa8-8f62-755ff8de5233",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        704,
+        304
+      ],
+      "id": "abcc2699-c0e6-46c7-8230-7a643f43225a",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "LSZ4PIfODaJY2qB2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"to\": \"Udadf8b4a85cda11f00335bf7fda5e656\",\n    \"messages\":[\n        {\n            \"type\":\"text\",\n            \"text\": {{JSON.stringify($json.output) }}\n        }\n    ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1216,
+        48
+      ],
+      "id": "6a89bf2b-57ca-4290-800e-6e709403e310",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "rcpCZ3YNDPNo1pfg",
+          "name": "kokoro"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "collection": "chatbot_info",
+        "options": {
+          "projection": "{\"_id\":0,\"bot_id\":0,\"tags\":0,\"status\":0,\"createdAt\":0,\"updatedAt\":0,\"deleteAt\":0}"
+        },
+        "query": "={\"bot_id\":\"{{ $('SetChatbotID').item.json.chatbot_id }}\"} "
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        656,
+        48
+      ],
+      "id": "ec202d51-b705-4990-a4d1-90bc68ec4162",
+      "name": "Get AI Agent Info1",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "collection": "prompts",
+        "options": {
+          "projection": "{\"_id\":0,\"content\":1}"
+        },
+        "query": "{\"purpose\":\"broadcast_daily\"}"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        48
+      ],
+      "id": "4e6d4d69-b52a-4d6c-8338-ca4e6b48c0bc",
+      "name": "Get Daily Prompts1",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你是:\n{{ JSON.stringify($json) }}\n現在你要\n{{ $('Get Daily Prompts1').item.json.content }}\n現在時間:{{ $('Schedule Trigger1').item.json['Readable time'] }}\n近期天氣:\n{{ JSON.stringify( $('Call \\'Get WeatherInfo\\'').item.json.records.Locations[0].Location[0].WeatherElement[9] ) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        48
+      ],
+      "id": "f3210767-c7fa-4cf9-98c1-8d4ac156a4e3",
+      "name": "AI Agent1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "SetChatbotID": {
+      "main": [
+        [
+          {
+            "node": "Call 'Get WeatherInfo'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Get WeatherInfo'": {
+      "main": [
+        [
+          {
+            "node": "Get Daily Prompts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "SetChatbotID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        []
+      ]
+    },
+    "Get AI Agent Info1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Daily Prompts1": {
+      "main": [
+        [
+          {
+            "node": "Get AI Agent Info1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cf8aa9ce-8792-4ac9-9151-abc52af1ede8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ce366878273a0c079b30629c5438592b1b601f9378d29abdf8727b9dd05db8f6"
+  },
+  "id": "YvtxfW9zxCzCWtLg",
+  "tags": []
+}
