@@ -1,0 +1,233 @@
+{
+  "name": "Insert Chat [activity_log] Test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chatbot",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        224
+      ],
+      "id": "0dac8210-1ab4-4b9a-80ca-b40e7e45303d",
+      "name": "Webhook",
+      "webhookId": "ef2ed347-9d67-411a-96ab-99c6c0f5a94f"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('Webhook').item.json.body.events[0].replyToken }}\",\n  \"messages\": [    \n{\n  \"type\": \"text\",\n  \"text\":\"123\"\n}\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -192,
+        -80
+      ],
+      "id": "51c56322-0316-4728-ae80-5c55bdb3c271",
+      "name": "replyMsg",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1SJzVJQkuVjDp2Mr",
+          "name": "TESTBot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "HNmIfxW8QH4VmmvU",
+          "mode": "list",
+          "cachedResultName": "Insert Chat [activity_log]"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "occurred_at": "={{new Date()}}",
+            "quoteToken": "={{ $('Webhook').item.json.body.events[0].message.quoteToken }}",
+            "messages": "={{ [$('Webhook').item.json.body.events[0].message ]}}",
+            "source_type": "={{ $('Webhook').item.json.body.events[0].source.type }}",
+            "sender_line_user_id": "={{ $('Webhook').item.json.body.events[0].source.userId }}",
+            "activity_type": "chat",
+            "activity_id": "={{\n  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  })\n}}",
+            "source_id": "={{ $('Webhook').item.json.body.events[0].source.type === 'group' ? $('Webhook').item.json.body.events[0].source.groupId :   $('Webhook').item.json.body.events[0].source.type === 'room'  ? $('Webhook').item.json.body.events[0].source.roomId  :   $('Webhook').item.json.body.events[0].source.userId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "activity_id",
+              "displayName": "activity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "chain_id",
+              "displayName": "chain_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "activity_type",
+              "displayName": "activity_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "occurred_at",
+              "displayName": "occurred_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object"
+            },
+            {
+              "id": "sender_line_user_id",
+              "displayName": "sender_line_user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "sender_bot_id",
+              "displayName": "sender_bot_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "source_type",
+              "displayName": "source_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "source_id",
+              "displayName": "source_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "quoteToken",
+              "displayName": "quoteToken",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "messages",
+              "displayName": "messages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array"
+            },
+            {
+              "id": "participants",
+              "displayName": "participants",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        80,
+        -80
+      ],
+      "id": "2dc066da-d46b-4ef6-acc4-d93eba851525",
+      "name": "Call 'Insert Chat [activity_log]'"
+    },
+    {
+      "parameters": {
+        "content": "## participants\n組別人數與個別的統整設定方式"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        16,
+        112
+      ],
+      "id": "212473e5-100e-4745-a1e9-4be5a2b7c40b",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "replyMsg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "replyMsg": {
+      "main": [
+        [
+          {
+            "node": "Call 'Insert Chat [activity_log]'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3704f4d9-c22d-4916-baa6-76be564773a2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ce366878273a0c079b30629c5438592b1b601f9378d29abdf8727b9dd05db8f6"
+  },
+  "id": "rLN21Bi4fjSvQNxe",
+  "tags": []
+}
