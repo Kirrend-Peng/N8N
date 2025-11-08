@@ -1,0 +1,56 @@
+// 切換資料庫
+db = db.getSiblingDB("Chatbot");
+
+// 建立 collection（支援 group/room），去除 createdAt
+db.createCollection("chat_rooms", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      description: "跨平台群組/聊天室 與成員清單",
+      required: ["platform", "chat_type", "chat_id", "members", "updatedAt"], // ← 移除 createdAt
+      additionalProperties: false,
+      properties: {
+        _id:        { bsonType: "objectId", description: "MongoDB 預設主鍵" },
+
+        platform:   { enum: ["line", "messenger", "slack", "discord", "telegram", "web", "custom"],
+                      description: "來源平台" },
+
+        chat_type:  { enum: ["group", "room"], description: "聊天室型別" },
+
+        chat_id:    { bsonType: "string", minLength: 1, description: "平台上的聊天室 ID" },
+
+        chat_name:  { bsonType: ["string", "null"], description: "聊天室名稱（可選）" },
+
+        members: {
+          bsonType: "array",
+          minItems: 1,
+          description: "成員 ID 陣列（multikey index）",
+          items: { bsonType: "string", minLength: 1 }
+        },
+
+        // 已移除 createdAt
+        updatedAt:  { bsonType: "date" }
+      }
+    }
+  },
+  validationLevel: "strict",
+  validationAction: "error"
+});
+
+// 唯一索引
+db.chat_rooms.createIndex(
+  { platform: 1, chat_type: 1, chat_id: 1 },
+  { unique: true, name: "uniq_platform_type_chat" }
+);
+
+// 成員查詢（multikey）
+db.chat_rooms.createIndex(
+  { members: 1 },
+  { name: "idx_members" }
+);
+
+// 平台 + 成員（常用複合）
+db.chat_rooms.createIndex(
+  { platform: 1, members: 1 },
+  { name: "idx_platform_members" }
+);
