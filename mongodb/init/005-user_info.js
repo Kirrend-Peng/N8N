@@ -10,6 +10,8 @@ db.createCollection("user_info", {
       required: ["user_id", "createdAt", "updatedAt"],
       additionalProperties: false,
       properties: {
+        _id:{ bsonType: "objectId", description: "MongoDB 預設主鍵" },
+        
         // 1) 基本識別
         user_id: {
           bsonType: "string",
