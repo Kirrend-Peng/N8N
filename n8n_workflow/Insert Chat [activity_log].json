@@ -42,7 +42,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        608,
+        1040,
         -320
       ],
       "id": "415895ac-c010-463c-9dcd-95478343a8b1",
@@ -58,7 +58,7 @@
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1.2,
       "position": [
-        832,
+        1248,
         -320
       ],
       "id": "bfd3ba18-2fdc-4dec-9fd2-cee9e93f16a8",
@@ -72,24 +72,112 @@
     },
     {
       "parameters": {
-        "collection": "actors_view",
-        "options": {},
-        "query": "={{ { id: { $in: $item(0).$node[\"activity_log_input\"].json.participants } } }}"
+        "collection": "user_identity",
+        "options": {
+          "projection": "{\n  \"_id\":0, \n  \"user_id\":1,\n  \"external_user_id\":1\n}"
+        },
+        "query": "=  {\n    \"provider\": \"line\",\n    \"bot_id\": {{ JSON.stringify($('[activity_log]_input').item.json.bot_id )}},\n  \"external_user_id\": { \"$in\": {{JSON.stringify( $node[\"Find_[chat_rooms]\"].json.members || []) }}}\n  }"
       },
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1.2,
       "position": [
-        128,
-        -320
+        -192,
+        -304
       ],
-      "id": "9e9ebdd4-3f14-4467-bfd1-6d53805b7314",
-      "name": "Find documents",
+      "id": "a9dcbdb2-baf1-4271-81a0-14fd2a6dcd10",
+      "name": "Find_[user_identity]",
       "credentials": {
         "mongoDb": {
           "id": "XhJV9sh6HSUrP479",
           "name": "MongoDB account"
         }
       }
+    },
+    {
+      "parameters": {
+        "collection": "actors_view",
+        "options": {},
+        "query": "={\"id\":{\"$in\":[ \"{{ $node[\"Find_[user_identity]\"].json.user_id}}\"]}}"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        -304
+      ],
+      "id": "9e9ebdd4-3f14-4467-bfd1-6d53805b7314",
+      "name": "Find_[actors_view]",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "collection": "chat_rooms",
+        "options": {
+          "projection": "{\"_id\":0,\"platform\":0,\"updatedAt\":0,\"chat_type\":0}"
+        },
+        "query": "={\"chat_id\":{\"$in\":{{JSON.stringify( $item(0).$node[\"[activity_log]_input\"].json.participatingGroupsID || []) }}}}"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -960,
+        -304
+      ],
+      "id": "7e03086e-5bc2-4843-8061-97e3c7163a9d",
+      "name": "Find_[chat_rooms]",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "empty"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        352,
+        -320
+      ],
+      "id": "284864e2-eed8-44ed-9c95-46a4891c5c2e",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "content": "## 找出所有參與者use id\n1. 設定bot_id 參數\n2. 設定provider 參數\n3. 利用line_user_id找出參與者id in db\n\n\n",
+        "width": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        -448
+      ],
+      "id": "e68acf7b-e9dd-41bb-a5fa-16d6a8390956",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 找出群組、聊天室成員\n1. 設定chat_id 參數\n\nOutput LineID\n",
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        -448
+      ],
+      "id": "b3b2ac33-4709-4114-a401-7f2a50922af7",
+      "name": "Sticky Note"
     },
     {
       "parameters": {
@@ -109,16 +197,16 @@
               "type": "object"
             },
             {
-              "name": "sender_line_user_id"
-            },
-            {
-              "name": "sender_bot_id"
+              "name": "sender_id"
             },
             {
               "name": "source_type"
             },
             {
               "name": "source_id"
+            },
+            {
+              "name": "source_platform"
             },
             {
               "name": "quoteToken"
@@ -130,6 +218,13 @@
             {
               "name": "participants",
               "type": "array"
+            },
+            {
+              "name": "participatingGroupsID",
+              "type": "array"
+            },
+            {
+              "name": "bot_id"
             }
           ]
         }
@@ -137,11 +232,153 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        -80,
-        -320
+        -1936,
+        -304
       ],
       "id": "f2991e09-7076-4a36-8a67-c5e68c7eb9e3",
-      "name": "activity_log_input"
+      "name": "[activity_log]_input2",
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1488,
+        -304
+      ],
+      "id": "c5da1621-606f-4caf-a4b1-c84e08c502ff",
+      "name": "start"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4ecfe47c-3c11-4352-aeb9-e86519b34b03",
+              "name": "activity_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "a9fea348-aeed-4d94-a992-1e64ffa0b774",
+              "name": "chain_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "330c1698-34bd-4098-9f88-a770422f52bc",
+              "name": "activity_type",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "5e448856-7776-4955-8a3b-9efb2f9024d2",
+              "name": "occurred_at",
+              "value": "={{new Date()}}",
+              "type": "object"
+            },
+            {
+              "id": "82f830a7-c54b-41cd-b2fd-6f79b637d65b",
+              "name": "sender_id",
+              "value": "kokoro",
+              "type": "string"
+            },
+            {
+              "id": "1bdf6748-144b-44cd-80cc-0b5fd611e165",
+              "name": "source_type",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "7f8b1c5f-590a-46ce-8b13-39c20eaf4155",
+              "name": "source_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "6da252fd-0e87-4ba6-89d5-36d39a0be1e4",
+              "name": "quoteToken",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "8d88eb12-7d39-4bb4-b1ad-995a65a5055e",
+              "name": "messages",
+              "value": "[]",
+              "type": "array"
+            },
+            {
+              "id": "87d494a4-02bd-4b0c-a4ec-1f7a59ce5319",
+              "name": "participants",
+              "value": "[]",
+              "type": "array"
+            },
+            {
+              "id": "b327a8cd-6dd3-4f59-a148-117b5e5e58cf",
+              "name": "participatingGroupsID",
+              "value": "[\"C9a6ae125b2a81abc60a349f088287123\",\"C9a6ae125b2a81abc60a349f088287124\"]",
+              "type": "array"
+            },
+            {
+              "id": "e68369d6-ffb0-4aae-822f-cfdf0ad48d39",
+              "name": "bot_id",
+              "value": "kokoro",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1200,
+        -304
+      ],
+      "id": "d39c122f-4ce6-4301-9a4b-9497de9a2b5b",
+      "name": "[activity_log]_input"
+    },
+    {
+      "parameters": {
+        "content": "## Output \nparticipants ids\n\n\n\n",
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -464
+      ],
+      "id": "a60b144d-5901-40c6-90e2-87310938fedb",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Output \nparticipants ids\n\n\n\n",
+        "width": 176
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        336,
+        -464
+      ],
+      "id": "334917a3-6d7e-40cd-a62b-51dc1bf48f33",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 將 workflow input 轉成 activity_logs 文件（含 details=conversation_logs 結構）\n\n/**\n * 預期 input fields：\n * activity_id:String, chain_id:String, activity_type:String,\n * occurred_at:Object|String, details:Object, sender_line_user_id:String,\n * sender_bot_id:String, source_type:String, quoteToken:String|null,\n * messages:Array (LINE格式或已標準化), participants:Array<string>\n */\n\nfunction normalizeDate(dt) {\n  // 支援：ISO 字串、{ iso: \"...\" }、Date、或無 => new Date()\n  if (!dt) return new Date();\n  if (dt instanceof Date) return dt;\n  if (typeof dt === 'string') return new Date(dt);\n  if (typeof dt === 'object') {\n    if (dt.iso) return new Date(dt.iso);\n    if (dt.$date) return new Date(dt.$date);\n  }\n  return new Date(dt);\n}\n\n// 將 LINE 訊息轉為 {type, payload}（若已是標準格式則原樣通過）\nfunction mapLineMessageToStd(msg) {\n  if (msg && msg.type && msg.payload) return msg; // 已標準化\n\n  const t = msg?.type;\n  switch (t) {\n    case 'text':\n      return { type: 'text', payload: { text: msg.text ?? '' } };\n    case 'image':\n      return {\n        type: 'image',\n        payload: {\n          originalContentUrl: msg.originalContentUrl ?? msg.url ?? '',\n          previewImageUrl: msg.previewImageUrl ?? null\n        }\n      };\n    case 'video':\n      return {\n        type: 'video',\n        payload: {\n          originalContentUrl: msg.originalContentUrl ?? msg.url ?? '',\n          previewImageUrl: msg.previewImageUrl ?? null,\n          durationMs: msg.duration ?? null\n        }\n      };\n    case 'sticker':\n      return {\n        type: 'sticker',\n        payload: {\n          packageId: msg.packageId ?? '',\n          stickerId: msg.stickerId ?? ''\n        }\n      };\n    case 'flex':\n      return {\n        type: 'flex',\n        payload: {\n          altText: msg.altText ?? '',\n          contents: msg.contents ?? {}\n        }\n      };\n    case 'file':\n      return {\n        type: 'file',\n        payload: {\n          fileName: msg.fileName ?? msg.name ?? '',\n          fileSize: msg.fileSize ?? null,\n          fileUrl: msg.fileUrl ?? msg.url ?? ''\n        }\n      };\n    default:\n      return { type: 'meta', payload: { raw: msg } };\n  }\n}\n\n// participants（字串陣列，供 activity_logs 快速查詢）\n// 規則：若 workflow 已給 participants(Array<string>) 就用它；\n// 否則用命名空間字串構成：[\"user:<line_user_id>\", \"bot:<bot_id>\"]（存在才放）\nfunction buildFlatParticipants(item) {\n  if (Array.isArray(item.participants) && item.participants.length) {\n    return item.participants;\n  }\n  const arr = [];\n  if (item.sender_line_user_id) arr.push('user:' + item.sender_line_user_id);\n  if (item.sender_bot_id) arr.push('bot:' + item.sender_bot_id);\n  return arr;\n}\n\n// details.participants（物件陣列，符合 conversation_logs）\n// 預設推論：使用者是 sender、bot 是 recipient（若兩者都有）\nfunction buildDetailsParticipants(item) {\n  const list = [];\n  if (item.sender_line_user_id) {\n    list.push({ type: 'user', id: item.sender_line_user_id, role: 'sender' });\n  }\n  if (item.sender_bot_id) {\n    // 若只有 bot 而沒有 user，也當 sender；若兩者都有，bot 當 recipient\n    const role = item.sender_line_user_id ? 'recipient' : 'sender';\n    list.push({ type: 'bot', id: item.sender_bot_id, role });\n  }\n  return list.length ? list : null;\n}\n\n// details.messages（標準化為 {type, payload}[]）\nfunction buildDetailsMessages(item) {\n  if (!Array.isArray(item.messages) || !item.messages.length) return null;\n  return item.messages.map(mapLineMessageToStd);\n}\n\n// details.source（符合 conversation_logs）\n// 必填: type, platform, source_id（你的 schema 欄位是 platform 不是 platform_id）\n// 來源推斷：若有 group/room 的 id 可放這裡；本輸入未提供，先以 userId 代替。\nfunction buildDetailsSource(item) {\n  const type = item.source_type || 'user';\n  const platform = 'line';\n  // 嘗試從 details?.source_id 或 workflow 的其他欄位取得；缺省就用 userId\n  const sourceId =\n    item.source_id ??\n    item.details?.source_id ??\n    item.sender_line_user_id ??\n    '';\n\n  return { type, platform, source_id: sourceId };\n}\n\n// sent_at / createdAt：以 occurred_at 為準；updatedAt 同時帶上（可依需求調整）\nfunction buildTimestamps(occurredAt) {\n  const d = normalizeDate(occurredAt);\n  return {\n    sent_at: d,\n    createdAt: d,\n    updatedAt: d\n  };\n}\n\nconst item = items[0].json;\n\n// ---- 組合 activity_logs 文件 ----\nconst occurredAt = normalizeDate(item.occurred_at);\nconst doc = {\n  activity_id: item.activity_id,\n  chain_id: item.chain_id ?? null,\n  activity_type: item.activity_type,\n  occurred_at: occurredAt,\n  participants: buildFlatParticipants(item),\n  details: {\n    // conversation_logs 內層\n    participants: buildDetailsParticipants(item),\n    messages: buildDetailsMessages(item),\n    source: buildDetailsSource(item),\n    quoteToken: item.quoteToken ?? null,\n    // 你若已經有其他 details 欄位，保留於 extra\n    extra: item.details && typeof item.details === 'object' ? item.details : {}\n  }\n};\n\n// 依 conversation_logs 要求補 timestamps\nObject.assign(doc.details, buildTimestamps(occurredAt));\n\nreturn [{ json: doc }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -320
+      ],
+      "id": "0ebc5edb-0598-4e23-a30f-efe9aa5c743b",
+      "name": "Set_participants"
     },
     {
       "parameters": {
@@ -151,48 +388,214 @@
       "typeVersion": 2,
       "position": [
         368,
-        -400
+        -144
       ],
-      "id": "0ebc5edb-0598-4e23-a30f-efe9aa5c743b",
-      "name": "Code in JavaScript"
+      "id": "2c78ec1e-6daa-4517-99fd-bdecad9b88bc",
+      "name": "Set_participants1"
     },
     {
       "parameters": {
-        "content": "0.\n1.找出對應使用者\n2.測試mapping"
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4fce7928-7b35-4682-8111-15cf14057d77",
+              "name": "activity_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "cf374d0a-9d81-4625-b58c-2dfc5ba8022d",
+              "name": "chain_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "3c036c3b-5dbb-42dd-bb6e-44f2bda1c4d1",
+              "name": "activity_type",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "81e518de-d217-4dcd-89a6-18473bc368b7",
+              "name": "occurred_at",
+              "value": "",
+              "type": "object"
+            },
+            {
+              "id": "bbb98196-af8c-427d-a062-fe57baf66bf6",
+              "name": "details",
+              "value": "",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        -320
+      ],
+      "id": "946ca885-667b-4b31-82e5-48a1eb39c176",
+      "name": "Mapping [conversation_log]"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1) 從另一個節點抓出所有聊天室 items\n//    Node 名稱要與畫面上的顯示一致（含中括號）\nconst chatItems = $items('Find_[chat_rooms]', 0, 0); // -> [{json: {...}}, ...]\n\n// 2) 建立去重集合，把所有 members 塞進來\nconst uniq = new Set();\n\nfor (const item of chatItems) {\n  const m = item.json?.members;\n  if (Array.isArray(m)) {\n    for (const id of m) {\n      if (typeof id === 'string' && id.trim()) {\n        uniq.add(id.trim());\n      }\n    }\n  }\n}\n\n// 3) 從本節點主輸入([activity_log]_input) 取得 sender_id\n//    建議將 Code 節點的主要輸入接到 [activity_log]_input\nconst senderId = $('[activity_log]_input').first().json?.sender_id;\nif (typeof senderId === 'string' && senderId.trim()) {\n  // 不在集合才加入\n  if (!uniq.has(senderId.trim())) {\n    uniq.add(senderId.trim());\n  }\n}\n\n// 4) 只輸出 participants（單一 item）\nreturn [{ json: { participants: Array.from(uniq) } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        -304
+      ],
+      "id": "5cbb078c-1da4-4c85-ab5f-39ee551aa670",
+      "name": "SetParticipants"
+    },
+    {
+      "parameters": {
+        "content": "## 建立linebot user_id至user_identity\n\n\n",
+        "width": 288,
+        "color": 3
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        48,
-        -512
+        -384,
+        -96
       ],
-      "id": "05211657-f64e-46ec-bdb0-ff98e8f928c1",
-      "name": "Sticky Note"
+      "id": "8c004d94-3566-4ccb-812c-b519b67fd5d8",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "url": "https://api.line.me/v2/bot/info",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -352,
+        64
+      ],
+      "id": "fc07c07f-b3f9-4c81-b30c-b0ae113f27ed",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "rcpCZ3YNDPNo1pfg",
+          "name": "kokoro"
+        }
+      }
     }
   ],
   "pinData": {},
   "connections": {
     "Mapping [activity_log]": {
       "main": [
+        []
+      ]
+    },
+    "Find_[actors_view]": {
+      "main": [
         [
           {
-            "node": "Insert documents",
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Set_participants",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Find documents": {
+    "Find_[user_identity]": {
+      "main": [
+        [
+          {
+            "node": "Find_[actors_view]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find_[chat_rooms]": {
+      "main": [
+        [
+          {
+            "node": "SetParticipants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[activity_log]_input2": {
       "main": [
         []
       ]
     },
-    "activity_log_input": {
+    "start": {
       "main": [
         [
           {
-            "node": "Find documents",
+            "node": "[activity_log]_input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[activity_log]_input": {
+      "main": [
+        [
+          {
+            "node": "Find_[chat_rooms]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set_participants": {
+      "main": [
+        [
+          {
+            "node": "Mapping [conversation_log]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapping [conversation_log]": {
+      "main": [
+        [
+          {
+            "node": "Mapping [activity_log]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetParticipants": {
+      "main": [
+        [
+          {
+            "node": "Find_[user_identity]",
             "type": "main",
             "index": 0
           }
@@ -204,7 +607,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "1a6ab21a-82d7-4d50-b89d-fe8918e5af24",
+  "versionId": "9ad9d8d7-de12-48bb-b849-fbe077eacdae",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "ce366878273a0c079b30629c5438592b1b601f9378d29abdf8727b9dd05db8f6"
