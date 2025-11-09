@@ -1,7 +1,7 @@
 // 使用資料庫
 db = db.getSiblingDB('Chatbot');
 
-// 建立 user_info（含驗證）
+// 重新建立 user_info（若已存在請先刪除或改用 collMod）
 db.createCollection("user_info", {
   validator: {
     $jsonSchema: {
@@ -16,7 +16,17 @@ db.createCollection("user_info", {
           description: "UUID（字串）",
           pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
         },
-        user_name: { bsonType: ["string","null"], description: "使用者名稱", minLength: 1 },
+        user_name: { bsonType: ["string","null"], description: "使用者名稱（真實/正式名稱）", minLength: 1 },
+
+        // ✅ 新增：使用者暱稱（顯示名稱）
+        user_nickname: {
+          bsonType: ["string","null"],
+          description: "使用者暱稱（顯示名稱，與 user_name 區分）",
+          minLength: 1,
+          maxLength: 64,
+          pattern: "^(?!\\s+$).+" // 若非空，避免全空白
+        },
+
         user_summary: { bsonType: ["string","null"], description: "使用者簡述 / 備註" },
 
         // 2) 聯絡方式
@@ -79,9 +89,9 @@ db.createCollection("user_info", {
           additionalProperties: false,
           properties: {
             country: { bsonType: ["string","null"], description: "國家/地區", maxLength: 64 },
-            region: { bsonType: ["string","null"], description: "州/省/縣市", maxLength: 64 },
-            city: { bsonType: ["string","null"], description: "城市/區", maxLength: 64 },
-            postal_code: { bsonType: ["string","null"], description: "郵遞區號", maxLength: 16 },
+            region:  { bsonType: ["string","null"], description: "州/省/縣市", maxLength: 64 },
+            city:    { bsonType: ["string","null"], description: "城市/區", maxLength: 64 },
+            postal_code:  { bsonType: ["string","null"], description: "郵遞區號", maxLength: 16 },
             address_line: { bsonType: ["string","null"], description: "地址詳細", maxLength: 256 }
           }
         },
@@ -114,9 +124,9 @@ db.createCollection("user_info", {
           description: "使用統計（皆選填）",
           additionalProperties: false,
           properties: {
-            loginCount: { bsonType: ["int","null"], description: "登入次數", minimum: 0 },
+            loginCount:  { bsonType: ["int","null"], description: "登入次數", minimum: 0 },
             lastLoginAt: { bsonType: ["date","null"], description: "最近登入時間" },
-            lastActiveAt: { bsonType: ["date","null"], description: "最近活躍時間" }
+            lastActiveAt:{ bsonType: ["date","null"], description: "最近活躍時間" }
           }
         },
 
@@ -137,17 +147,38 @@ db.createCollection("user_info", {
   validationAction: "error"
 });
 
-// 索引（已移除 line_user_id / school_class_seat / external_ids 相關）
-db.user_info.createIndex({ user_id: 1 }, { unique: true, name: "uniq_user_id" });
+// ── 索引設定 ─────────────────────────────────────────────────────
+
+// 1) user_id 唯一
+db.user_info.createIndex(
+  { user_id: 1 },
+  { unique: true, name: "uniq_user_id" }
+);
+
+// 2) email 唯一（僅對存在且為 string 的文件）
 db.user_info.createIndex(
   { email: 1 },
-  { unique: true, name: "uniq_email", partialFilterExpression: { email: { $type: "string" } } }
+  {
+    unique: true,
+    name: "uniq_email",
+    partialFilterExpression: { email: { $type: "string" } }
+  }
 );
+
+// 3) 文字搜尋：名稱 / 暱稱 / 摘要 / 標籤
 db.user_info.createIndex(
-  { user_name: "text", user_summary: "text", tags: "text" },
-  { name: "txt_user_name_summary_tags", default_language: "none" }
+  { user_name: "text", user_nickname: "text", user_summary: "text", tags: "text" },
+  { name: "txt_name_nickname_summary_tags", default_language: "none" }
 );
-db.user_info.createIndex({ "stats.lastActiveAt": -1 }, { name: "idx_lastActiveAt_desc" });
-db.user_info.createIndex({ status: 1 }, { name: "idx_status" });
 
+// 4) 最近活躍時間（排序用）
+db.user_info.createIndex(
+  { "stats.lastActiveAt": -1 },
+  { name: "idx_lastActiveAt_desc" }
+);
 
+// 5) 狀態查詢
+db.user_info.createIndex(
+  { status: 1 },
+  { name: "idx_status" }
+);
