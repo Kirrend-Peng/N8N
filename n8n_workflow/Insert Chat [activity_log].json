@@ -8,31 +8,31 @@
             {
               "id": "4fce7928-7b35-4682-8111-15cf14057d77",
               "name": "activity_id",
-              "value": "",
+              "value": "={{ $('[activity_log]_input').item.json.activity_id }}",
               "type": "string"
             },
             {
               "id": "cf374d0a-9d81-4625-b58c-2dfc5ba8022d",
               "name": "chain_id",
-              "value": "",
+              "value": "={{ $('[activity_log]_input').item.json.chain_id }}",
               "type": "string"
             },
             {
               "id": "3c036c3b-5dbb-42dd-bb6e-44f2bda1c4d1",
               "name": "activity_type",
-              "value": "",
+              "value": "chat",
               "type": "string"
             },
             {
               "id": "81e518de-d217-4dcd-89a6-18473bc368b7",
               "name": "occurred_at",
-              "value": "",
+              "value": "={{ $json.createdAt }}",
               "type": "object"
             },
             {
               "id": "bbb98196-af8c-427d-a062-fe57baf66bf6",
               "name": "details",
-              "value": "",
+              "value": "={{$node[\"mappiing_conversation_log\"].json}}",
               "type": "object"
             }
           ]
@@ -42,7 +42,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -192,
+        -400,
         -304
       ],
       "id": "415895ac-c010-463c-9dcd-95478343a8b1",
@@ -58,7 +58,7 @@
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1.2,
       "position": [
-        -16,
+        -112,
         -304
       ],
       "id": "bfd3ba18-2fdc-4dec-9fd2-cee9e93f16a8",
@@ -157,9 +157,6 @@
             {
               "name": "participatingGroupsID",
               "type": "array"
-            },
-            {
-              "name": "bot_id"
             }
           ]
         }
@@ -167,165 +164,11 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        -1632,
-        -560
+        -1664,
+        -304
       ],
       "id": "f2991e09-7076-4a36-8a67-c5e68c7eb9e3",
-      "name": "[activity_log]_input2",
-      "disabled": true
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        -1856,
-        -304
-      ],
-      "id": "c5da1621-606f-4caf-a4b1-c84e08c502ff",
-      "name": "start"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "4ecfe47c-3c11-4352-aeb9-e86519b34b03",
-              "name": "activity_id",
-              "value": "123",
-              "type": "string"
-            },
-            {
-              "id": "72764090-4f49-4bef-abf5-1906bb4170c9",
-              "name": "chain_id",
-              "value": "321",
-              "type": "string"
-            },
-            {
-              "id": "330c1698-34bd-4098-9f88-a770422f52bc",
-              "name": "activity_type",
-              "value": "chat",
-              "type": "string"
-            },
-            {
-              "id": "5e448856-7776-4955-8a3b-9efb2f9024d2",
-              "name": "occurred_at",
-              "value": "={{new Date()}}",
-              "type": "object"
-            },
-            {
-              "id": "82f830a7-c54b-41cd-b2fd-6f79b637d65b",
-              "name": "sender_id",
-              "value": "U69e213818ccd7daa7246eb105d37b7d2",
-              "type": "string"
-            },
-            {
-              "id": "1bdf6748-144b-44cd-80cc-0b5fd611e165",
-              "name": "source_type",
-              "value": "room",
-              "type": "string"
-            },
-            {
-              "id": "7f8b1c5f-590a-46ce-8b13-39c20eaf4155",
-              "name": "source_id",
-              "value": "123",
-              "type": "string"
-            },
-            {
-              "id": "33fa3576-ee04-49c5-be3d-1ea1b1e5d989",
-              "name": "source_platform",
-              "value": "line",
-              "type": "string"
-            },
-            {
-              "id": "6da252fd-0e87-4ba6-89d5-36d39a0be1e4",
-              "name": "quoteToken",
-              "value": "12345",
-              "type": "string"
-            },
-            {
-              "id": "8d88eb12-7d39-4bb4-b1ad-995a65a5055e",
-              "name": "messages",
-              "value": "[{ \"type\":  \"text\", \"id\":  \"587413933980909909\", \"quoteToken\":  \"LV7Na4ITxRsKEzOCP_iFzfILXUhIordOsWi1juLQx1sBlqBxa9SfnEnSbpr661jIWHY9E25r39axFKRozowkTUB7knRM1uSZ7Am-JvagcElJTjDenyMR4uwVUEASY6odyvnFh3wXVcfovz0YZ_E_jw\", \"markAsReadToken\":  \"NM65INMJgbS3Y82M_V6oqp8NHJgdf43urTEMJHrSirWvFmmRx8zqM8I_wa_puoakMdnOjMiGWgCsfWrFXcT1hHlW-w4mdcVY5HozZB27dY0RnR6dwCYsVRoA-dfjO_c_yFTgAn8iW6r5vHocyWpvZ9_V2_qV74qmd6BdKf6bCVFW2ubmyQobTfZ-hE188y6ZgBbbOXFbmarETLQ5NuyWtQ\", \"text\":  \"test\" }]",
-              "type": "array"
-            },
-            {
-              "id": "87d494a4-02bd-4b0c-a4ec-1f7a59ce5319",
-              "name": "participants",
-              "value": "[\"U69e213818ccd7daa7246eb105d37b7d2\"]",
-              "type": "array"
-            },
-            {
-              "id": "b327a8cd-6dd3-4f59-a148-117b5e5e58cf",
-              "name": "participatingGroupsID",
-              "value": "[\"C9a6ae125b2a81abc60a349f088287123\",\"C9a6ae125b2a81abc60a349f088287124\"]",
-              "type": "array"
-            },
-            {
-              "id": "80cb557a-0a6e-4791-854c-51dbe1f6677c",
-              "name": "bot_id",
-              "value": "U69e213818ccd7daa7246eb105d37b7d2",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        -1648,
-        -304
-      ],
-      "id": "d39c122f-4ce6-4301-9a4b-9497de9a2b5b",
-      "name": "[activity_log]_input"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "4fce7928-7b35-4682-8111-15cf14057d77",
-              "name": "activity_id",
-              "value": "",
-              "type": "string"
-            },
-            {
-              "id": "cf374d0a-9d81-4625-b58c-2dfc5ba8022d",
-              "name": "chain_id",
-              "value": "",
-              "type": "string"
-            },
-            {
-              "id": "3c036c3b-5dbb-42dd-bb6e-44f2bda1c4d1",
-              "name": "activity_type",
-              "value": "",
-              "type": "string"
-            },
-            {
-              "id": "81e518de-d217-4dcd-89a6-18473bc368b7",
-              "name": "occurred_at",
-              "value": "",
-              "type": "object"
-            },
-            {
-              "id": "bbb98196-af8c-427d-a062-fe57baf66bf6",
-              "name": "details",
-              "value": "",
-              "type": "object"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        -384,
-        -304
-      ],
-      "id": "946ca885-667b-4b31-82e5-48a1eb39c176",
-      "name": "Mapping [conversation_log]"
+      "name": "[activity_log]_input2"
     },
     {
       "parameters": {
@@ -342,12 +185,12 @@
     },
     {
       "parameters": {
-        "jsCode": "// === 讀來源節點 ===\n// 注意：節點名有中括號一定要加引號\nconst activity = ($items(\"[activity_log]_input\")[0] || {}).json || {};\nconst identityItems = $items(\"Find_[user_identity]\") || [];\n\n// external_user_id -> user_id 對照表\nconst idMap = new Map();\nfor (const it of identityItems) {\n  const j = it.json || {};\n  if (j.external_user_id && j.user_id) {\n    idMap.set(j.external_user_id, j.user_id);\n  }\n}\n\n// === 參與者（participants）===\n// sender：由 activity.sender_id 來，若有對照就用 user_id，否則回退用 external id\nconst senderExt = activity.sender_id;\nconst senderId = idMap.get(senderExt) ?? senderExt;\n\n// 其他參與人（若有），來源於 activity.participants（外部ID陣列）\nconst uniqExt = new Set(Array.isArray(activity.participants) ? activity.participants : []);\n// 確保 sender 也在集合內\nif (senderExt) uniqExt.add(senderExt);\n\n// 建 participants 陣列（user）\nconst participants = [];\nfor (const ext of uniqExt) {\n  const mapped = idMap.get(ext) ?? ext;\n  participants.push({\n    type: \"user\",\n    id: String(mapped),\n    role: ext === senderExt ? \"sender\" : \"recipient\",\n  });\n}\n\n// 加上 bot（recipient）\nif (activity.bot_id) {\n  participants.push({\n    type: \"bot\",\n    id: String(activity.bot_id),\n    role: \"recipient\",\n  });\n}\n\n// === messages ===\n// 若 activity.messages 為空，補一則 meta 訊息以符合 minItems:1\nlet messages = Array.isArray(activity.messages) ? activity.messages : [];\nif (messages.length === 0) {\n  messages = [\n    {\n      type: \"meta\",\n      payload: {\n        note: \"no messages in activity_log\",\n        quoteToken: activity.quoteToken ?? null,\n      },\n    },\n  ];\n} else {\n  // 盡量正規化成 {type, payload} 結構\n  messages = messages.map(m => {\n    if (m && typeof m === \"object\" && m.type && m.payload) return m;\n    return { type: \"meta\", payload: { original: m } };\n  });\n}\n\n// === source ===\n// 你的 schema 範例 properties 列的是 { type, platform, source_id }\n// 但 required 寫的是 [\"type\", \"platform_id\", \"source_id\"]（有落差）\n// 這裡先依照 properties 輸出 {type, platform, source_id}；若你的 validator 真正要求 platform_id，請把下面的 platform 改成 platform_id。\nconst source = {\n  type: String(activity.source_type || \"\"),\n  platform: String(activity.source_platform || \"\"),\n  source_id: String(activity.source_id || \"\"),\n};\n\n// === 其他欄位 ===\nconst doc = {\n  participants,\n  messages,\n  source,\n  quoteToken: activity.quoteToken ?? null,\n  // schema 要求的欄位（雖然未在 properties 明確定義型別）\n  sent_at: activity.occurred_at ? new Date(activity.occurred_at) : new Date(),\n  createdAt: new Date(),\n};\n\n// 回傳單一 item；pairedItem:0 讓 item linking 保持對應\nreturn [{ json: doc, pairedItem: 0 }];\n"
+        "jsCode": "// === 讀來源節點 ===\nconst activity = ($items(\"[activity_log]_input\")[0] || {}).json || {};\nconst identityItems = $items(\"Find_[user_identity]\") || [];\nconst setParticipantsItem = ($items(\"SetParticipants\")[0] || {}).json || {};\n\n// === external_user_id -> user_id 對照表 ===\nconst idMap = new Map();\nfor (const it of identityItems) {\n  const j = it.json || it; // 兼容某些節點只回傳 json\n  if (j.external_user_id && j.user_id) {\n    idMap.set(j.external_user_id, j.user_id);\n  }\n}\n\n// === 參與者（participants）===\n// sender：由 activity.sender_id 來\nconst senderExt = activity.sender_id;\n\n// 從 SetParticipants 取得 external user id 陣列\nconst extList = Array.isArray(setParticipantsItem.participants)\n  ? setParticipantsItem.participants\n  : [];\n\n// 做成去重集合\nconst uniqExt = new Set(extList);\n\n// 確保 sender 一定在 participants 清單裡（如果 SetParticipants 漏掉）\nif (senderExt && !uniqExt.has(senderExt)) {\n  uniqExt.add(senderExt);\n}\n\n// 只有「有 mapping」的 external_user_id 會留下，其餘直接丟掉\nconst participants = [];\nfor (const ext of uniqExt) {\n  const mappedId = idMap.get(ext);\n  if (!mappedId) {\n    // 沒有對應 user_id，直接略過\n    continue;\n  }\n\n  participants.push({\n    id: String(mappedId),                      // 一律用 user_id\n    role: ext === senderExt ? \"sender\" : \"recipient\",\n  });\n}\n\n// ⚠️ 不再額外加入 bot 參與者\n\n\n// === messages ===\n// type 使用 activity.messages[i].type\n// payload：除了 type / markAsReadToken 以外的欄位\nconst rawMessages = Array.isArray(activity.messages) ? activity.messages : [];\nlet messages;\n\nif (rawMessages.length === 0) {\n  messages = [\n    {\n      type: \"meta\",\n      payload: {\n        note: \"no messages in activity_log\",\n        quoteToken: activity.quoteToken ?? null,\n      },\n    },\n  ];\n} else {\n  messages = rawMessages.map(m => {\n    if (!m || typeof m !== \"object\") {\n      return {\n        type: \"meta\",\n        payload: { value: m },\n      };\n    }\n\n    // markAsReadToken 拆出來但不放進 payload 裡\n    const { type, markAsReadToken, ...rest } = m;\n\n    const finalType = (typeof type === \"string\" && type) ? type : \"meta\";\n\n    return {\n      type: finalType,\n      payload: rest,   // 這裡已經不包含 markAsReadToken\n    };\n  });\n}\n\n// === source ===\nconst source = {\n  type: String(activity.source_type || \"\"),\n  platform: String(activity.source_platform || \"\"),\n  source_id: String(activity.source_id || \"\"),\n};\n\n// === 其他欄位 ===\nconst doc = {\n  participants,\n  messages,\n  source,\n  quoteToken: activity.quoteToken ?? null,\n  sent_at: activity.occurred_at ? new Date(activity.occurred_at) : new Date(),\n  createdAt: new Date(),\n};\n\nreturn [{ json: doc, pairedItem: 0 }];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -672,
+        -704,
         -304
       ],
       "id": "0ebc5edb-0598-4e23-a30f-efe9aa5c743b",
@@ -420,36 +263,9 @@
     },
     "[activity_log]_input2": {
       "main": [
-        []
-      ]
-    },
-    "start": {
-      "main": [
-        [
-          {
-            "node": "[activity_log]_input",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "[activity_log]_input": {
-      "main": [
         [
           {
             "node": "Find_[chat_rooms]",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Mapping [conversation_log]": {
-      "main": [
-        [
-          {
-            "node": "Mapping [activity_log]",
             "type": "main",
             "index": 0
           }
@@ -471,7 +287,7 @@
       "main": [
         [
           {
-            "node": "Mapping [conversation_log]",
+            "node": "Mapping [activity_log]",
             "type": "main",
             "index": 0
           }
@@ -483,7 +299,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "5f9fee0b-585d-46a8-a74b-271d312609ae",
+  "versionId": "ef232ca4-ba1d-40c8-ab3f-3fec8a700be0",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "ce366878273a0c079b30629c5438592b1b601f9378d29abdf8727b9dd05db8f6"

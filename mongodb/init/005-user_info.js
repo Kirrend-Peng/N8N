@@ -1,7 +1,5 @@
-// 使用資料庫
 db = db.getSiblingDB('Chatbot');
 
-// 重新建立 user_info（若已存在請先刪除或改用 collMod）
 db.createCollection("user_info", {
   validator: {
     $jsonSchema: {
@@ -18,18 +16,58 @@ db.createCollection("user_info", {
           description: "UUID（字串）",
           pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
         },
-        user_name: { bsonType: ["string","null"], description: "使用者名稱（真實/正式名稱）", minLength: 1 },
+        user_name: {
+          bsonType: ["string","null"],
+          description: "使用者名稱（真實/正式名稱）",
+          minLength: 1
+        },
 
-        // ✅ 新增：使用者暱稱（顯示名稱）
+        // 使用者類型
+        user_type: {
+          bsonType: ["string","null"],
+          description: "使用者類型（例如 student/teacher/parent/staff/admin 等）",
+          minLength: 1,
+          maxLength: 32,
+          pattern: "^(?!\\s+$).+"
+        },
+
+        // 暱稱 / 顯示名稱
         user_nickname: {
           bsonType: ["string","null"],
           description: "使用者暱稱（顯示名稱，與 user_name 區分）",
           minLength: 1,
           maxLength: 64,
-          pattern: "^(?!\\s+$).+" // 若非空，避免全空白
+          pattern: "^(?!\\s+$).+"
         },
 
-        user_summary: { bsonType: ["string","null"], description: "使用者簡述 / 備註" },
+        // 簡述
+        user_summary: {
+          bsonType: ["string","null"],
+          description: "使用者簡述 / 備註"
+        },
+
+        // ✅ 新增：個性 / 人設
+        persona: {
+          bsonType: ["string","null"],
+          description: "個性 / 人設 / 自我介紹補充（例：怕生的理工宅、溫柔導師等）",
+          minLength: 1
+        },
+
+        // ✅ 新增：喜歡的事物
+        likes: {
+          bsonType: ["array","null"],
+          description: "喜歡的事物（興趣、偏好等）",
+          items: { bsonType: "string" },
+          maxItems: 64
+        },
+
+        // ✅ 新增：不喜歡的事物
+        dislikes: {
+          bsonType: ["array","null"],
+          description: "不喜歡的事物（忌諱、雷點等）",
+          items: { bsonType: "string" },
+          maxItems: 64
+        },
 
         // 2) 聯絡方式
         email: {
@@ -59,16 +97,20 @@ db.createCollection("user_info", {
           description: "偏好設定（皆選填）",
           additionalProperties: false,
           properties: {
-            theme: { bsonType: ["string","null"], description: "主題（light/dark/auto 等）", maxLength: 16 },
+            theme: {
+              bsonType: ["string","null"],
+              description: "主題（light/dark/auto 等）",
+              maxLength: 16
+            },
             notifications: {
               bsonType: "object",
               description: "通知偏好",
               additionalProperties: false,
               properties: {
                 email: { bsonType: ["bool","null"], description: "Email 通知" },
-                sms: { bsonType: ["bool","null"], description: "簡訊通知" },
-                line: { bsonType: ["bool","null"], description: "LINE 通知" },
-                push: { bsonType: ["bool","null"], description: "App Push 通知" }
+                sms:   { bsonType: ["bool","null"], description: "簡訊通知" },
+                line:  { bsonType: ["bool","null"], description: "LINE 通知" },
+                push:  { bsonType: ["bool","null"], description: "App Push 通知" }
               }
             },
             language_priority: {
@@ -81,8 +123,15 @@ db.createCollection("user_info", {
         },
 
         // 4) 檔案與生日
-        avatar_url: { bsonType: ["string","null"], description: "頭像 URL", maxLength: 1024 },
-        birthday: { bsonType: ["date","null"], description: "生日（可為 null）" },
+        avatar_url: {
+          bsonType: ["string","null"],
+          description: "頭像 URL",
+          maxLength: 1024
+        },
+        birthday: {
+          bsonType: ["date","null"],
+          description: "生日（可為 null）"
+        },
 
         // 5) 地址
         address: {
@@ -90,11 +139,11 @@ db.createCollection("user_info", {
           description: "地址資訊",
           additionalProperties: false,
           properties: {
-            country: { bsonType: ["string","null"], description: "國家/地區", maxLength: 64 },
-            region:  { bsonType: ["string","null"], description: "州/省/縣市", maxLength: 64 },
-            city:    { bsonType: ["string","null"], description: "城市/區", maxLength: 64 },
-            postal_code:  { bsonType: ["string","null"], description: "郵遞區號", maxLength: 16 },
-            address_line: { bsonType: ["string","null"], description: "地址詳細", maxLength: 256 }
+            country:     { bsonType: ["string","null"], description: "國家/地區", maxLength: 64 },
+            region:      { bsonType: ["string","null"], description: "州/省/縣市", maxLength: 64 },
+            city:        { bsonType: ["string","null"], description: "城市/區", maxLength: 64 },
+            postal_code: { bsonType: ["string","null"], description: "郵遞區號", maxLength: 16 },
+            address_line:{ bsonType: ["string","null"], description: "地址詳細", maxLength: 256 }
           }
         },
 
@@ -118,7 +167,10 @@ db.createCollection("user_info", {
           description: "帳號狀態（active/inactive/blocked 等）",
           enum: ["active","inactive","blocked", null]
         },
-        deletedAt: { bsonType: ["date","null"], description: "軟刪除時間（null 代表未刪）" },
+        deletedAt: {
+          bsonType: ["date","null"],
+          description: "軟刪除時間（null 代表未刪）"
+        },
 
         // 8) 互動統計
         stats: {
@@ -126,9 +178,9 @@ db.createCollection("user_info", {
           description: "使用統計（皆選填）",
           additionalProperties: false,
           properties: {
-            loginCount:  { bsonType: ["int","null"], description: "登入次數", minimum: 0 },
-            lastLoginAt: { bsonType: ["date","null"], description: "最近登入時間" },
-            lastActiveAt:{ bsonType: ["date","null"], description: "最近活躍時間" }
+            loginCount:   { bsonType: ["int","null"], description: "登入次數", minimum: 0 },
+            lastLoginAt:  { bsonType: ["date","null"], description: "最近登入時間" },
+            lastActiveAt: { bsonType: ["date","null"], description: "最近活躍時間" }
           }
         },
 
@@ -140,14 +192,22 @@ db.createCollection("user_info", {
         },
 
         // 10) 時戳
-        createdAt: { bsonType: "date", description: "創建時間（ISO Date）" },
-        updatedAt: { bsonType: "date", description: "更新時間（ISO Date）" }
+        createdAt: {
+          bsonType: "date",
+          description: "創建時間（ISO Date）"
+        },
+        updatedAt: {
+          bsonType: "date",
+          description: "更新時間（ISO Date）"
+        }
       }
     }
   },
   validationLevel: "moderate",
   validationAction: "error"
 });
+
+
 
 // ── 索引設定 ─────────────────────────────────────────────────────
 
