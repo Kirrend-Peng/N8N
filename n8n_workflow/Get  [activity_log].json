@@ -1,0 +1,203 @@
+{
+  "name": "Get  [activity_log]",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "limit",
+              "type": "number"
+            },
+            {
+              "name": "bot_line_user_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1776,
+        -640
+      ],
+      "id": "418670a8-f225-4916-9075-ebe7caf7cd4d",
+      "name": "Get_[activity_log]_input"
+    },
+    {
+      "parameters": {
+        "content": "## 移動participants\n將participants移出details"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1488,
+        -832
+      ],
+      "id": "c704933d-75cc-4071-a7e3-1b5aec51802d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 取得 Get_[activity_log] 的所有 items\nconst activityItems = $items(\"Get_[activity_log]\");\n\n// 用 Set 去重\nconst idSet = new Set();\n\nfor (const item of activityItems) {\n  const doc = item.json || {};\n  const details = doc.details || {};\n  const participants = Array.isArray(details.participants)\n    ? details.participants\n    : [];\n\n  for (const p of participants) {\n    if (p && p.id) {\n      idSet.add(String(p.id));\n    }\n  }\n}\n\n// 輸出一個 item：participant_ids 陣列\nreturn [\n  {\n    json: {\n      participant_ids: Array.from(idSet),\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1104,
+        -640
+      ],
+      "id": "85fec7ca-eaa5-4639-af61-2b625c51f24c",
+      "name": "CollectParticipantIds"
+    },
+    {
+      "parameters": {
+        "collection": "user_info",
+        "options": {},
+        "query": "={\n  \"user_id\": {\n    \"$in\": {{ JSON.stringify($json.participant_ids) || [] }}\n  }\n}\n"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -896,
+        -640
+      ],
+      "id": "7659428a-9ac8-4e89-bc63-7109045d09d3",
+      "name": "Find_[user_info_by_ids]",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// === 1. 拿到來源資料 ===\n\n// 近期活動（已經是「包含指定 bot」的紀錄）\nconst activityItems = $items(\"Get_[activity_log]\");\n// 所有參與者的 user_info\nconst userItems = $items(\"Find_[user_info_by_ids]\");\n\n// === 2. 建 user_id -> user_info map ===\n\nconst userMap = new Map();\n\nfor (const it of userItems) {\n  const u = it.json || {};\n  if (u.user_id) {\n    userMap.set(String(u.user_id), u);\n  }\n}\n\n// === 3. 組 participants 陣列 ===\n//\n// 規則：\n// - 以 userMap 裡的 user 建 participants\n// - profile 只要你需要的欄位（可以再精簡）\n\nconst participants = [];\n\nfor (const [uid, profile] of userMap.entries()) {\n  participants.push({\n    id: uid,\n    profile: {\n      user_id: profile.user_id,\n      user_name: profile.user_name ?? null,\n      user_nickname: profile.user_nickname ?? null,\n      user_type: profile.user_type ?? null,\n      user_summary: profile.user_summary ?? null,\n      persona: profile.persona ?? null,\n      avatar_url: profile.avatar_url ?? null,\n      tags: profile.tags ?? [],\n      status: profile.status ?? null,\n      createdAt: profile.createdAt ?? null,\n      updatedAt: profile.updatedAt ?? null,\n    },\n  });\n}\n\n// === 4. 組 history_activity 陣列 ===\n//\n// 每一筆：\n// - activity_id\n// - activity_type\n// - occurred_at\n// - source（從 details.source 或外層補）\n// - details（原封不動帶出：participants、messages、sent_at...）\n\nconst history_activity = activityItems.map(item => {\n  const act = item.json || {};\n  const details = act.details || {};\n  const source = details.source || {\n    type: act.source_type || null,\n    platform: act.source_platform || null,\n    source_id: act.source_id || null,\n  };\n\n  return {\n    activity_id: act.activity_id,\n    chain_id: act.chain_id ?? null,\n    activity_type: act.activity_type,\n    occurred_at: act.occurred_at,  // n8n Mongo Node 通常會轉成字串\n    source,\n    details: {\n      participants: Array.isArray(details.participants)\n        ? details.participants\n        : [],\n      messages: Array.isArray(details.messages)\n        ? details.messages\n        : [],\n      sent_at: details.sent_at ?? null,\n      // 如果你未來在 details 裡加別的欄位，也可以在這裡一併帶出\n    },\n  };\n});\n\n// === 5. 最終輸出：單一 item，包含 participants + history_activity ===\n\nreturn [\n  {\n    json: {\n      participants,\n      history_activity,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        -640
+      ],
+      "id": "003935a6-76ab-4332-b202-b649748d8bce",
+      "name": "Build_FullHistory"
+    },
+    {
+      "parameters": {
+        "collection": "activity_log",
+        "options": {
+          "limit": "={{ $json.limit || 10 }}"
+        },
+        "query": "={ \n  \"participants\":{\"$in\":[\"{{$node[\"Find_bot_[user_identity]\"].json.user_id}}\"]}\n}"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -1280,
+        -640
+      ],
+      "id": "6b1b0e8b-c657-4b4f-a12f-15adf37fbaf0",
+      "name": "Get_[activity_log]",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "collection": "user_identity",
+        "options": {
+          "projection": "{\n  \"_id\":0, \n  \"user_id\":1,\n  \"external_user_id\":1\n}"
+        },
+        "query": "=  {\n    \"provider\": \"line\",\n    \"bot_id\": \"{{ $json.bot_line_user_id }}\",\n  \"external_user_id\": \"{{ $json.bot_line_user_id }}\"\n  }\n  "
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -1536,
+        -640
+      ],
+      "id": "c2013876-4c6e-4309-85d5-8a91d4d11973",
+      "name": "Find_bot_[user_identity]",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get_[activity_log]_input": {
+      "main": [
+        [
+          {
+            "node": "Find_bot_[user_identity]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CollectParticipantIds": {
+      "main": [
+        [
+          {
+            "node": "Find_[user_info_by_ids]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find_[user_info_by_ids]": {
+      "main": [
+        [
+          {
+            "node": "Build_FullHistory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_[activity_log]": {
+      "main": [
+        [
+          {
+            "node": "CollectParticipantIds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find_bot_[user_identity]": {
+      "main": [
+        [
+          {
+            "node": "Get_[activity_log]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e567ba1b-b072-493b-8a8b-04c28d2a2edf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ce366878273a0c079b30629c5438592b1b601f9378d29abdf8727b9dd05db8f6"
+  },
+  "id": "3ZbEWMdwe7vIQgo6",
+  "tags": []
+}

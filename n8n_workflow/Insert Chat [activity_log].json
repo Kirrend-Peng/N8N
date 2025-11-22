@@ -42,8 +42,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -400,
-        -304
+        -304,
+        -480
       ],
       "id": "415895ac-c010-463c-9dcd-95478343a8b1",
       "name": "Mapping [activity_log]"
@@ -59,33 +59,10 @@
       "typeVersion": 1.2,
       "position": [
         -112,
-        -304
+        -480
       ],
       "id": "bfd3ba18-2fdc-4dec-9fd2-cee9e93f16a8",
       "name": "Insert documents",
-      "credentials": {
-        "mongoDb": {
-          "id": "XhJV9sh6HSUrP479",
-          "name": "MongoDB account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "collection": "user_identity",
-        "options": {
-          "projection": "{\n  \"_id\":0, \n  \"user_id\":1,\n  \"external_user_id\":1\n}"
-        },
-        "query": "=  {\n    \"provider\": \"line\",\n    \"bot_id\": \"{{ $('[activity_log]_input').first().json.bot_id }}\",\n  \"external_user_id\": { \"$in\": {{JSON.stringify( $node[\"SetParticipants\"].json.participants || []) }}\n  }\n  }"
-      },
-      "type": "n8n-nodes-base.mongoDb",
-      "typeVersion": 1.2,
-      "position": [
-        -1040,
-        -304
-      ],
-      "id": "a9dcbdb2-baf1-4271-81a0-14fd2a6dcd10",
-      "name": "Find_[user_identity]",
       "credentials": {
         "mongoDb": {
           "id": "XhJV9sh6HSUrP479",
@@ -102,8 +79,8 @@
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1.2,
       "position": [
-        -1424,
-        -304
+        -1200,
+        -480
       ],
       "id": "7e03086e-5bc2-4843-8061-97e3c7163a9d",
       "name": "Find_[chat_rooms]",
@@ -113,6 +90,32 @@
           "name": "MongoDB account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1) 從另一個節點抓出所有聊天室 items\n//    Node 名稱要與畫面上的顯示一致（含中括號）\nconst chatItems = $items('Find_[chat_rooms]', 0, 0); // -> [{json: {...}}, ...]\n\n// 2) 建立去重集合，把所有 members 塞進來\nconst uniq = new Set();\n\nfor (const item of chatItems) {\n  const m = item.json?.members;\n  if (Array.isArray(m)) {\n    for (const id of m) {\n      if (typeof id === 'string' && id.trim()) {\n        uniq.add(id.trim());\n      }\n    }\n  }\n}\n\n// 3) 從本節點主輸入([activity_log]_input) 取得 sender_id\n//    建議將 Code 節點的主要輸入接到 [activity_log]_input\nconst senderId = $('[activity_log]_input').first().json?.sender_id;\nif (typeof senderId === 'string' && senderId.trim()) {\n  // 不在集合才加入\n  if (!uniq.has(senderId.trim())) {\n    uniq.add(senderId.trim());\n  }\n}\n\n// 4) 只輸出 participants（單一 item）\nreturn [{ json: { participants: Array.from(uniq) } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        -480
+      ],
+      "id": "5cbb078c-1da4-4c85-ab5f-39ee551aa670",
+      "name": "SetParticipants"
+    },
+    {
+      "parameters": {
+        "jsCode": "// === 讀來源節點 ===\nconst activity = ($items(\"[activity_log]_input\")[0] || {}).json || {};\nconst identityItems = $items(\"Find_[user_identity]\") || [];\nconst setParticipantsItem = ($items(\"SetParticipants\")[0] || {}).json || {};\n\n// === external_user_id -> user_id 對照表 ===\nconst idMap = new Map();\nfor (const it of identityItems) {\n  const j = it.json || it; // 兼容某些節點只回傳 json\n  if (j.external_user_id && j.user_id) {\n    idMap.set(j.external_user_id, j.user_id);\n  }\n}\n\n// === 參與者（participants）===\n// sender：由 activity.sender_id 來\nconst senderExt = activity.sender_id;\n\n// 從 SetParticipants 取得 external user id 陣列\nconst extList = Array.isArray(setParticipantsItem.participants)\n  ? setParticipantsItem.participants\n  : [];\n\n// 做成去重集合\nconst uniqExt = new Set(extList);\n\n// 確保 sender 一定在 participants 清單裡（如果 SetParticipants 漏掉）\nif (senderExt && !uniqExt.has(senderExt)) {\n  uniqExt.add(senderExt);\n}\n\n// 只有「有 mapping」的 external_user_id 會留下，其餘直接丟掉\nconst participants = [];\nfor (const ext of uniqExt) {\n  const mappedId = idMap.get(ext);\n  if (!mappedId) {\n    // 沒有對應 user_id，直接略過\n    continue;\n  }\n\n  participants.push({\n    id: String(mappedId),                      // 一律用 user_id\n    role: ext === senderExt ? \"sender\" : \"recipient\",\n  });\n}\n\n// ⚠️ 不再額外加入 bot 參與者\n\n\n// === messages ===\n// type 使用 activity.messages[i].type\n// payload：除了 type / markAsReadToken 以外的欄位\nconst rawMessages = Array.isArray(activity.messages) ? activity.messages : [];\nlet messages;\n\nif (rawMessages.length === 0) {\n  messages = [\n    {\n      type: \"meta\",\n      payload: {\n        note: \"no messages in activity_log\",\n        quoteToken: activity.quoteToken ?? null,\n      },\n    },\n  ];\n} else {\n  messages = rawMessages.map(m => {\n    if (!m || typeof m !== \"object\") {\n      return {\n        type: \"meta\",\n        payload: { value: m },\n      };\n    }\n\n    // markAsReadToken 拆出來但不放進 payload 裡\n    const { type, markAsReadToken, ...rest } = m;\n\n    const finalType = (typeof type === \"string\" && type) ? type : \"meta\";\n\n    return {\n      type: finalType,\n      payload: rest,   // 這裡已經不包含 markAsReadToken\n    };\n  });\n}\n\n// === source ===\nconst source = {\n  type: String(activity.source_type || \"\"),\n  platform: String(activity.source_platform || \"\"),\n  source_id: String(activity.source_id || \"\"),\n};\n\n// === 其他欄位 ===\nconst doc = {\n  participants,\n  messages,\n  source,\n  // 外層不再放 quoteToken\n  sent_at: activity.occurred_at ? new Date(activity.occurred_at) : new Date(),\n  createdAt: new Date(),\n};\n\nreturn [{ json: doc, pairedItem: 0 }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        -480
+      ],
+      "id": "0ebc5edb-0598-4e23-a30f-efe9aa5c743b",
+      "name": "mappiing_conversation_log"
     },
     {
       "parameters": {
@@ -144,19 +147,14 @@
               "name": "source_platform"
             },
             {
-              "name": "quoteToken"
-            },
-            {
               "name": "messages",
               "type": "array"
             },
             {
-              "name": "participants",
-              "type": "array"
+              "name": "line_bot_id"
             },
             {
-              "name": "participatingGroupsID",
-              "type": "array"
+              "name": "destination_id"
             }
           ]
         }
@@ -164,66 +162,347 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        -1664,
-        -304
+        -1616,
+        -640
       ],
       "id": "f2991e09-7076-4a36-8a67-c5e68c7eb9e3",
-      "name": "[activity_log]_input2"
+      "name": "[activity_log]_input"
     },
     {
       "parameters": {
-        "jsCode": "// 1) 從另一個節點抓出所有聊天室 items\n//    Node 名稱要與畫面上的顯示一致（含中括號）\nconst chatItems = $items('Find_[chat_rooms]', 0, 0); // -> [{json: {...}}, ...]\n\n// 2) 建立去重集合，把所有 members 塞進來\nconst uniq = new Set();\n\nfor (const item of chatItems) {\n  const m = item.json?.members;\n  if (Array.isArray(m)) {\n    for (const id of m) {\n      if (typeof id === 'string' && id.trim()) {\n        uniq.add(id.trim());\n      }\n    }\n  }\n}\n\n// 3) 從本節點主輸入([activity_log]_input) 取得 sender_id\n//    建議將 Code 節點的主要輸入接到 [activity_log]_input\nconst senderId = $('[activity_log]_input').first().json?.sender_id;\nif (typeof senderId === 'string' && senderId.trim()) {\n  // 不在集合才加入\n  if (!uniq.has(senderId.trim())) {\n    uniq.add(senderId.trim());\n  }\n}\n\n// 4) 只輸出 participants（單一 item）\nreturn [{ json: { participants: Array.from(uniq) } }];\n"
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "de8daca2-2f9b-4ee7-b6bf-c3fba3fe3f32",
+              "leftValue": "={{ $json.source_type }}",
+              "rightValue": "user",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1408,
+        -640
+      ],
+      "id": "58da8362-906a-4933-80cd-e6e496946f4c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4fce7928-7b35-4682-8111-15cf14057d77",
+              "name": "activity_id",
+              "value": "={{ $('[activity_log]_input').item.json.activity_id }}",
+              "type": "string"
+            },
+            {
+              "id": "cf374d0a-9d81-4625-b58c-2dfc5ba8022d",
+              "name": "chain_id",
+              "value": "={{ $('[activity_log]_input').item.json.chain_id }}",
+              "type": "string"
+            },
+            {
+              "id": "3c036c3b-5dbb-42dd-bb6e-44f2bda1c4d1",
+              "name": "activity_type",
+              "value": "={{ $('[activity_log]_input').item.json.activity_type }}",
+              "type": "string"
+            },
+            {
+              "id": "81e518de-d217-4dcd-89a6-18473bc368b7",
+              "name": "occurred_at",
+              "value": "={{ new Date($('[activity_log]_input').item.json.occurred_at) }}",
+              "type": "object"
+            },
+            {
+              "id": "bbb98196-af8c-427d-a062-fe57baf66bf6",
+              "name": "details",
+              "value": "={{$node[\"mappiing_conversation_log1\"].json}}",
+              "type": "object"
+            },
+            {
+              "id": "65588666-6b48-4251-b0c0-d41a29e26ef0",
+              "name": "participants",
+              "value": "={{$node[\"SetParticipants1\"].json.participants}}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -304,
+        -816
+      ],
+      "id": "e97a51c1-5f73-4d9c-9eee-834f9dc20984",
+      "name": "Mapping [activity_log]1"
+    },
+    {
+      "parameters": {
+        "collection": "user_identity",
+        "options": {
+          "projection": "{\n  \"_id\":0, \n  \"user_id\":1,\n  \"external_user_id\":1\n}"
+        },
+        "query": "=  {\n    \"provider\": \"line\",\n    \"bot_id\": \"{{ $('[activity_log]_input').first().json.line_bot_id }}\",\n  \"external_user_id\": { \"$in\": [\"{{ $('[activity_log]_input').item.json.sender_id }}\",\"{{ $('[activity_log]_input').item.json.destination_id }}\"]\n  }\n  }\n  "
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -1200,
+        -816
+      ],
+      "id": "bbd33ecf-f0b6-4032-9072-5b934e678d04",
+      "name": "Find_[user_identity]1",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// === 讀來源節點 ===\nconst activity = ($items(\"[activity_log]_input\")[0] || {}).json || {};\nconst identityItems = $items(\"Find_[user_identity]1\") || [];\n\n// === external_user_id -> user_id 對照表 ===\nconst idMap = new Map();\nfor (const it of identityItems) {\n  const j = it.json || it; // 兼容某些節點只回傳 json\n  if (j.external_user_id && j.user_id) {\n    idMap.set(j.external_user_id, j.user_id);\n  }\n}\n\n// === 參與者（participants）===\n// 1) sender：來自 activity.sender_id\n// 2) recipients：來自 activity.destination_id（字串或 array）\n// 規則：只有有 mapping 的 external_user_id 會留下；同一個 user_id 不重複\n\nconst participants = [];\nconst usedIds = new Set();\n\n// 處理 sender\nconst senderExt = activity.sender_id || null;\nlet senderUserId = null;\n\nif (senderExt) {\n  const mappedSender = idMap.get(senderExt);\n  if (mappedSender) {\n    senderUserId = String(mappedSender);\n    participants.push({\n      id: senderUserId,\n      role: \"sender\",\n    });\n    usedIds.add(senderUserId);\n  }\n}\n\n// ✅ 改這裡：destination_id 支援「字串 + 陣列」兩種型態\nconst destExtList = [];\n\nif (Array.isArray(activity.destination_id)) {\n  destExtList.push(...activity.destination_id);\n} else if (activity.destination_id) {\n  destExtList.push(activity.destination_id);\n}\n\n// 處理 destination_id（接收者）\nfor (const ext of destExtList) {\n  const mapped = idMap.get(ext);\n  if (!mapped) {\n    // 沒有對應 user_id，直接略過\n    continue;\n  }\n  const uid = String(mapped);\n\n  // 已經加入（可能是 sender 或其他 recipient）就略過，避免重複\n  if (usedIds.has(uid)) continue;\n\n  usedIds.add(uid);\n  participants.push({\n    id: uid,\n    role: \"recipient\",\n  });\n}\n\n// === messages ===\nconst rawMessages = Array.isArray(activity.messages) ? activity.messages : [];\nlet messages;\n\nif (rawMessages.length === 0) {\n  messages = [\n    {\n      type: \"meta\",\n      payload: {\n        note: \"no messages in activity_log\",\n        quoteToken: activity.quoteToken ?? null,\n      },\n    },\n  ];\n} else {\n  messages = rawMessages.map(m => {\n    if (!m || typeof m !== \"object\") {\n      return {\n        type: \"meta\",\n        payload: { value: m },\n      };\n    }\n\n    const { type, markAsReadToken, ...rest } = m;\n    const finalType = (typeof type === \"string\" && type) ? type : \"meta\";\n\n    return {\n      type: finalType,\n      payload: rest,   // 不包含 markAsReadToken\n    };\n  });\n}\n\n// === source ===\nconst source = {\n  type: String(activity.source_type || \"\"),\n  platform: String(activity.source_platform || \"\"),\n  source_id: String(activity.source_id || \"\"),\n};\n\n// === 其他欄位 ===\nconst doc = {\n  participants,\n  messages,\n  source,\n  sent_at: activity.occurred_at ? new Date(activity.occurred_at) : new Date(),\n};\n\nreturn [{ json: doc, pairedItem: 0 }];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1232,
-        -304
+        -528,
+        -816
       ],
-      "id": "5cbb078c-1da4-4c85-ab5f-39ee551aa670",
-      "name": "SetParticipants"
+      "id": "6f2c0eb4-e352-49b8-88d7-d7d98e315718",
+      "name": "mappiing_conversation_log1"
     },
     {
       "parameters": {
-        "jsCode": "// === 讀來源節點 ===\nconst activity = ($items(\"[activity_log]_input\")[0] || {}).json || {};\nconst identityItems = $items(\"Find_[user_identity]\") || [];\nconst setParticipantsItem = ($items(\"SetParticipants\")[0] || {}).json || {};\n\n// === external_user_id -> user_id 對照表 ===\nconst idMap = new Map();\nfor (const it of identityItems) {\n  const j = it.json || it; // 兼容某些節點只回傳 json\n  if (j.external_user_id && j.user_id) {\n    idMap.set(j.external_user_id, j.user_id);\n  }\n}\n\n// === 參與者（participants）===\n// sender：由 activity.sender_id 來\nconst senderExt = activity.sender_id;\n\n// 從 SetParticipants 取得 external user id 陣列\nconst extList = Array.isArray(setParticipantsItem.participants)\n  ? setParticipantsItem.participants\n  : [];\n\n// 做成去重集合\nconst uniqExt = new Set(extList);\n\n// 確保 sender 一定在 participants 清單裡（如果 SetParticipants 漏掉）\nif (senderExt && !uniqExt.has(senderExt)) {\n  uniqExt.add(senderExt);\n}\n\n// 只有「有 mapping」的 external_user_id 會留下，其餘直接丟掉\nconst participants = [];\nfor (const ext of uniqExt) {\n  const mappedId = idMap.get(ext);\n  if (!mappedId) {\n    // 沒有對應 user_id，直接略過\n    continue;\n  }\n\n  participants.push({\n    id: String(mappedId),                      // 一律用 user_id\n    role: ext === senderExt ? \"sender\" : \"recipient\",\n  });\n}\n\n// ⚠️ 不再額外加入 bot 參與者\n\n\n// === messages ===\n// type 使用 activity.messages[i].type\n// payload：除了 type / markAsReadToken 以外的欄位\nconst rawMessages = Array.isArray(activity.messages) ? activity.messages : [];\nlet messages;\n\nif (rawMessages.length === 0) {\n  messages = [\n    {\n      type: \"meta\",\n      payload: {\n        note: \"no messages in activity_log\",\n        quoteToken: activity.quoteToken ?? null,\n      },\n    },\n  ];\n} else {\n  messages = rawMessages.map(m => {\n    if (!m || typeof m !== \"object\") {\n      return {\n        type: \"meta\",\n        payload: { value: m },\n      };\n    }\n\n    // markAsReadToken 拆出來但不放進 payload 裡\n    const { type, markAsReadToken, ...rest } = m;\n\n    const finalType = (typeof type === \"string\" && type) ? type : \"meta\";\n\n    return {\n      type: finalType,\n      payload: rest,   // 這裡已經不包含 markAsReadToken\n    };\n  });\n}\n\n// === source ===\nconst source = {\n  type: String(activity.source_type || \"\"),\n  platform: String(activity.source_platform || \"\"),\n  source_id: String(activity.source_id || \"\"),\n};\n\n// === 其他欄位 ===\nconst doc = {\n  participants,\n  messages,\n  source,\n  quoteToken: activity.quoteToken ?? null,\n  sent_at: activity.occurred_at ? new Date(activity.occurred_at) : new Date(),\n  createdAt: new Date(),\n};\n\nreturn [{ json: doc, pairedItem: 0 }];\n"
+        "collection": "user_identity",
+        "options": {
+          "projection": "{\n  \"_id\":0, \n  \"user_id\":1,\n  \"external_user_id\":1\n}"
+        },
+        "query": "=  {\n    \"provider\": \"line\",\n    \"bot_id\": \"{{ $('[activity_log]_input').first().json.line_bot_id }}\",\n  \"external_user_id\": { \"$in\": {{JSON.stringify( $node[\"SetParticipants\"].json.participants || []) }}\n  }\n  }"
       },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
       "position": [
-        -704,
-        -304
+        -752,
+        -480
       ],
-      "id": "0ebc5edb-0598-4e23-a30f-efe9aa5c743b",
-      "name": "mappiing_conversation_log"
+      "id": "a9dcbdb2-baf1-4271-81a0-14fd2a6dcd10",
+      "name": "Find_[user_identity]",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
     },
     {
       "parameters": {
-        "content": "## 整合user_info chatbot_info\n\nuser_info 需添加user_type\n",
-        "width": 208
+        "content": "## User\n",
+        "height": 80,
+        "width": 880,
+        "color": 5
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -1040,
-        -576
+        -1216,
+        -912
       ],
-      "id": "c8c34879-6da3-4c49-b1d8-057af7652f16",
+      "id": "6b391652-9c8e-4a77-90c3-03e1dc7c6e1e",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 移動participants\n將participants移出details"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1584,
+        -976
+      ],
+      "id": "6bd1153e-9828-481a-97c2-953134d92da8",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Group/Room\n",
+        "height": 80,
+        "width": 1296,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1216,
+        -592
+      ],
+      "id": "4d76da97-8e18-4f18-8d89-ac3edbaac328",
       "name": "Sticky Note"
     },
     {
       "parameters": {
-        "content": "## 建立view整合user_info、user_identity\n中的\nuser_id\nuser_type\nexternal_id\n?\n\n或log 僅記錄id也是可以的\n",
-        "height": 272,
-        "width": 416
+        "jsCode": "// === 讀來源節點 ===\nconst activity = ($items(\"[activity_log]_input\")[0] || {}).json || {};\nconst identityItems = $items(\"Find_[user_identity]1\") || [];\n\n// === external_user_id -> user_id 對照表 ===\nconst idMap = new Map();\nfor (const it of identityItems) {\n  const j = it.json || it; // 兼容某些節點只回傳 json\n  if (j.external_user_id && j.user_id) {\n    idMap.set(j.external_user_id, j.user_id);\n  }\n}\n\n// === participants: 字串陣列（只存 user_id）===\n// 規則：\n// 1) sender 來自 activity.sender_id\n// 2) recipients 來自 activity.destination_id（可為字串或陣列）\n// 3) 只有有 mapping 的 external_user_id 會留下\n// 4) 同一個 user_id 不重複\n\nconst participantIds = [];\nconst usedIds = new Set();\n\n// 處理 sender\nconst senderExt = activity.sender_id || null;\n\nif (senderExt) {\n  const mappedSender = idMap.get(senderExt);\n  if (mappedSender) {\n    const uid = String(mappedSender);\n    participantIds.push(uid);\n    usedIds.add(uid);\n  }\n}\n\n// destination_id 支援「字串 + 陣列」兩種型態\nconst destExtList = [];\n\nif (Array.isArray(activity.destination_id)) {\n  destExtList.push(...activity.destination_id);\n} else if (activity.destination_id) {\n  destExtList.push(activity.destination_id);\n}\n\n// 處理 destination_id（接收者）\nfor (const ext of destExtList) {\n  const mapped = idMap.get(ext);\n  if (!mapped) continue; // 沒有對應 user_id 就略過\n\n  const uid = String(mapped);\n\n  if (usedIds.has(uid)) continue; // 避免重複\n\n  usedIds.add(uid);\n  participantIds.push(uid);\n}\n\n// === 輸出：participants 為「id 字串陣列」===\nreturn [\n  {\n    json: {\n      participants: participantIds,\n    },\n    pairedItem: 0,\n  },\n];\n"
       },
-      "type": "n8n-nodes-base.stickyNote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        -816
+      ],
+      "id": "7680f6a0-c283-4af9-b57a-b4daf0d470d5",
+      "name": "SetParticipants1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4fce7928-7b35-4682-8111-15cf14057d77",
+              "name": "activity_id",
+              "value": "={{    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {     const r = Math.random() * 16 | 0;     const v = c === 'x' ? r : (r & 0x3 | 0x8);     return v.toString(16);   }) }}",
+              "type": "string"
+            },
+            {
+              "id": "cf374d0a-9d81-4625-b58c-2dfc5ba8022d",
+              "name": "chain_id",
+              "value": "=",
+              "type": "string"
+            },
+            {
+              "id": "3c036c3b-5dbb-42dd-bb6e-44f2bda1c4d1",
+              "name": "activity_type",
+              "value": "=chat",
+              "type": "string"
+            },
+            {
+              "id": "81e518de-d217-4dcd-89a6-18473bc368b7",
+              "name": "occurred_at",
+              "value": "={{ new Date() }}",
+              "type": "object"
+            },
+            {
+              "id": "bbb98196-af8c-427d-a062-fe57baf66bf6",
+              "name": "details",
+              "value": "={}",
+              "type": "object"
+            },
+            {
+              "id": "65588666-6b48-4251-b0c0-d41a29e26ef0",
+              "name": "participants",
+              "value": "={}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        -1120
+      ],
+      "id": "92d52e4f-1805-4da8-8590-de92f398d5dd",
+      "name": "Mapping [activity_log]2",
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -784,
-        -672
+        -480,
+        -1120
       ],
-      "id": "8e446568-cf90-4a2d-bae0-6e6343fa54c3",
-      "name": "Sticky Note1"
+      "id": "a8e817a4-e23d-4041-bfb7-238b92cbbdf8",
+      "name": "When clicking ‘Execute workflow’",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "activity_log",
+        "fields": "activity_id,chain_id,activity_type,occurred_at,participants,details",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        -816
+      ],
+      "id": "d89b8ca6-277e-4c9f-99fd-c2afe3ae4c16",
+      "name": "Insert documents1",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "activity_log",
+        "fields": "activity_id,chain_id,activity_type",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        -1120
+      ],
+      "id": "9d878be5-ceb3-42cb-be4a-4dc7a3933988",
+      "name": "Insert documents2",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "activity_log",
+        "fields": "activity_id,chain_id,activity_type,occurred_at,details,participants",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        -1024
+      ],
+      "id": "461f7ebf-9a17-4498-b548-dc3b72355823",
+      "name": "Insert documents3",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -239,33 +518,11 @@
         ]
       ]
     },
-    "Find_[user_identity]": {
-      "main": [
-        [
-          {
-            "node": "mappiing_conversation_log",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Find_[chat_rooms]": {
       "main": [
         [
           {
             "node": "SetParticipants",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "[activity_log]_input2": {
-      "main": [
-        [
-          {
-            "node": "Find_[chat_rooms]",
             "type": "main",
             "index": 0
           }
@@ -293,13 +550,119 @@
           }
         ]
       ]
+    },
+    "[activity_log]_input": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Find_[user_identity]1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find_[chat_rooms]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapping [activity_log]1": {
+      "main": [
+        [
+          {
+            "node": "Insert documents1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find_[user_identity]1": {
+      "main": [
+        [
+          {
+            "node": "SetParticipants1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mappiing_conversation_log1": {
+      "main": [
+        [
+          {
+            "node": "Mapping [activity_log]1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find_[user_identity]": {
+      "main": [
+        [
+          {
+            "node": "mappiing_conversation_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetParticipants1": {
+      "main": [
+        [
+          {
+            "node": "mappiing_conversation_log1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapping [activity_log]2": {
+      "main": [
+        [
+          {
+            "node": "Insert documents2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Mapping [activity_log]2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "ef232ca4-ba1d-40c8-ab3f-3fec8a700be0",
+  "versionId": "04536b09-7129-436a-9c84-ff2227fbffec",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "ce366878273a0c079b30629c5438592b1b601f9378d29abdf8727b9dd05db8f6"

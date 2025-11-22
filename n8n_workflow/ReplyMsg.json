@@ -4,32 +4,32 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "woof",
+        "path": "kokoro",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -160,
-        32
+        304,
+        -48
       ],
-      "id": "d21b2b0d-c98c-4158-b4ef-e7c9c3618418",
+      "id": "3d850702-46a6-454f-9c1f-a56f84627e5c",
       "name": "Webhook",
       "webhookId": "ef2ed347-9d67-411a-96ab-99c6c0f5a94f"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=你是一隻小狗狗\n根據使用者的訊息\"{{ $('Webhook').item.json.body.events[0].message.text }}\"\n回覆使用者繁體中文",
+        "text": "=你是:{{ JSON.stringify($node[\"Get AI Agent Info1\"].json) }}\n近期活動紀錄:{{JSON.stringify($node['Call_Get [activity_log]'].json) }}\n任務:請根據近期活動紀錄回覆使用者\n語言:繁體中文",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.1,
       "position": [
-        48,
-        32
+        1520,
+        -64
       ],
-      "id": "0703c10c-16cd-48ab-beff-08d5831399d7",
+      "id": "d5c46383-2f8e-4f52-85c7-cceee58012eb",
       "name": "AI Agent"
     },
     {
@@ -39,10 +39,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        48,
-        240
+        1520,
+        144
       ],
-      "id": "826afdf0-84c2-4aed-ad7f-a3749f8be74d",
+      "id": "659ff273-a356-4037-9868-813b30ef0d96",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
@@ -65,17 +65,446 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        400,
-        32
+        1856,
+        -64
       ],
-      "id": "2999824a-70b7-4fb3-9a6b-a0295dcc038b",
+      "id": "d7cb214f-3b05-4e12-bc4f-984f0919b084",
       "name": "HTTP Request",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "KvlwShNX8SHY1lOo",
-          "name": "woof"
+          "id": "rcpCZ3YNDPNo1pfg",
+          "name": "kokoro"
         }
       }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4559e642-a76e-4896-8ebe-f3bc741d4210",
+              "name": "chatbot_id",
+              "value": "0f1e2d3c-4b5a-4c3d-9e8f-abcdef123456",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        -64
+      ],
+      "id": "83a28e7d-4229-486f-920b-e14cc073ca95",
+      "name": "SetChatbotID"
+    },
+    {
+      "parameters": {
+        "collection": "user_info",
+        "options": {
+          "projection": "{\"_id\":0,\"user_name\":1,\"user_summary\":1,\"persona\":1,\"likes\":1,\"dislikes\":1}"
+        },
+        "query": "={\"user_id\":\"{{ $('SetChatbotID').item.json.chatbot_id }}\"} "
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        -64
+      ],
+      "id": "197953aa-bb5e-48e5-82e6-83ccf84173fb",
+      "name": "Get AI Agent Info1",
+      "credentials": {
+        "mongoDb": {
+          "id": "XhJV9sh6HSUrP479",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "HNmIfxW8QH4VmmvU",
+          "mode": "list",
+          "cachedResultName": "Insert Chat [activity_log]"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "line_bot_id": "={{ $node[\"Webhook\"].json.body.destination }}",
+            "activity_id": "={{    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {     const r = Math.random() * 16 | 0;     const v = c === 'x' ? r : (r & 0x3 | 0x8);     return v.toString(16);   }) }}",
+            "occurred_at": "={{new Date()}}",
+            "sender_id": "={{ $node[\"Webhook\"].json.body.events[0].source.userId }}",
+            "source_type": "={{ $node[\"Webhook\"].json.body.events[0].source.type }}",
+            "source_platform": "=line",
+            "source_id": "={{ $node[\"Webhook\"].json.body.events[0].source.userId }}",
+            "messages": "={{\n  Array.isArray($node[\"Webhook\"].json.body.events[0].message)\n    ? $node[\"Webhook\"].json.body.events[0].message\n    : [ $node[\"Webhook\"].json.body.events[0].message ]\n}}",
+            "activity_type": "chat",
+            "destination_id": "={{ $node[\"Webhook\"].json.body.destination }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "activity_id",
+              "displayName": "activity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "chain_id",
+              "displayName": "chain_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "activity_type",
+              "displayName": "activity_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "occurred_at",
+              "displayName": "occurred_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "sender_id",
+              "displayName": "sender_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "source_type",
+              "displayName": "source_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "source_id",
+              "displayName": "source_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "source_platform",
+              "displayName": "source_platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "messages",
+              "displayName": "messages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            },
+            {
+              "id": "line_bot_id",
+              "displayName": "line_bot_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "destination_id",
+              "displayName": "destination_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        784,
+        -64
+      ],
+      "id": "2d8b197b-b67c-4079-b21d-9f0f12cea28d",
+      "name": "Call 'Insert Chat [activity_log]'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "HNmIfxW8QH4VmmvU",
+          "mode": "list",
+          "cachedResultName": "Insert Chat [activity_log]"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "line_bot_id": "={{ $node[\"Webhook\"].json.body.destination }}",
+            "activity_id": "={{    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {     const r = Math.random() * 16 | 0;     const v = c === 'x' ? r : (r & 0x3 | 0x8);     return v.toString(16);   }) }}",
+            "occurred_at": "={{new Date()}}",
+            "sender_id": "={{ $node[\"Webhook\"].json.body.destination }}",
+            "source_type": "={{ $node[\"Webhook\"].json.body.events[0].source.type }}",
+            "source_platform": "=line",
+            "source_id": "={{ $node[\"Webhook\"].json.body.events[0].source.userId }}",
+            "messages": "={{ [{\n  ...$(\"HTTP Request\").item.json.sentMessages[0],\n  text: JSON.stringify($('AI Agent').item.json.output)\n} ]}}",
+            "activity_type": "chat",
+            "destination_id": "={{ $node[\"Webhook\"].json.body.events[0].source.userId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "activity_id",
+              "displayName": "activity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "chain_id",
+              "displayName": "chain_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "activity_type",
+              "displayName": "activity_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "occurred_at",
+              "displayName": "occurred_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "sender_id",
+              "displayName": "sender_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "source_type",
+              "displayName": "source_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "source_id",
+              "displayName": "source_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "source_platform",
+              "displayName": "source_platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "messages",
+              "displayName": "messages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            },
+            {
+              "id": "line_bot_id",
+              "displayName": "line_bot_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "destination_id",
+              "displayName": "destination_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2080,
+        -64
+      ],
+      "id": "a9a4ac88-c684-4178-9940-3e239a2c5875",
+      "name": "Call 'Insert Chat [activity_log]'1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "3ZbEWMdwe7vIQgo6",
+          "mode": "list",
+          "cachedResultName": "Get  [activity_log]"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "limit": 10,
+            "bot_line_user_id": "={{ $('Webhook').item.json.body.destination }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "bot_line_user_id",
+              "displayName": "bot_line_user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        -64
+      ],
+      "id": "e900d1dd-ed01-4c70-ab9d-22dd74d474cd",
+      "name": "Call_Get [activity_log]"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e7bf8921-4196-4cba-acf3-4827b70ebdae",
+              "leftValue": "={{ $node[\"Webhook\"].json.body.events[0].source.userId }}",
+              "rightValue": "=Udadf8b4a85cda11f00335bf7fda5e656",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        512,
+        -48
+      ],
+      "id": "e8c616b7-6fee-4073-9c1d-04d3ce121f01",
+      "name": "If"
     }
   ],
   "pinData": {},
@@ -84,7 +513,7 @@
       "main": [
         [
           {
-            "node": "AI Agent",
+            "node": "If",
             "type": "main",
             "index": 0
           }
@@ -112,36 +541,83 @@
           }
         ]
       ]
+    },
+    "SetChatbotID": {
+      "main": [
+        [
+          {
+            "node": "Get AI Agent Info1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get AI Agent Info1": {
+      "main": [
+        [
+          {
+            "node": "Call_Get [activity_log]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Call 'Insert Chat [activity_log]'1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Insert Chat [activity_log]'": {
+      "main": [
+        [
+          {
+            "node": "SetChatbotID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Get [activity_log]": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Call 'Insert Chat [activity_log]'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "5e78eb30-669e-49ee-94fe-87ee03361b53",
+  "versionId": "049c3d3c-d809-4387-831b-58513a9ca1a4",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "ce366878273a0c079b30629c5438592b1b601f9378d29abdf8727b9dd05db8f6"
   },
-  "id": "zSrXZoksox48XDZT",
-  "tags": [
-    {
-      "createdAt": "2025-09-19T08:10:02.844Z",
-      "updatedAt": "2025-09-19T08:10:02.844Z",
-      "id": "tk4TCgLTTGOhi7zi",
-      "name": "ai-agent"
-    },
-    {
-      "createdAt": "2025-09-19T08:10:02.831Z",
-      "updatedAt": "2025-09-19T08:10:02.831Z",
-      "id": "3sMN94afIsWy1Umw",
-      "name": "prd"
-    },
-    {
-      "createdAt": "2025-09-19T08:10:02.848Z",
-      "updatedAt": "2025-09-19T08:10:02.848Z",
-      "id": "U0pP4kAAZamR3mIo",
-      "name": "yt"
-    }
-  ]
+  "id": "R013uMg8ypqLFkRp",
+  "tags": []
 }

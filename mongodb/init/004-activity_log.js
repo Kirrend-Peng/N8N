@@ -2,7 +2,7 @@
 db = db.getSiblingDB('Chatbot');
 
 // 重新建立 collection（包含 _id 欄位於 Schema 中）
-db.createCollection("activity_logs", {
+db.createCollection("activity_log", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
@@ -25,7 +25,7 @@ db.createCollection("activity_logs", {
 
         // 選填：事件鏈結 ID（同一鏈共用；若提供須為 UUID 字串）
         chain_id: {
-          bsonType: "string",
+          bsonType: ["string","null"],
           description: "事件鏈結 ID（UUID 字串；同一鏈相同）",
           pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
         },
@@ -57,8 +57,8 @@ db.createCollection("activity_logs", {
 
         // 選填：事件細節（僅允許 object 或 array）
         details: {
-          bsonType: ["object", "array"],
-          description: "各型別事件的自定義巢狀資料（僅 object/array）"
+          bsonType: ["object"],
+          description: "各型別事件的自定義巢狀資料（僅 object）"
         }
       }
     }
@@ -69,13 +69,13 @@ db.createCollection("activity_logs", {
 
 
 // 1) activity_id 唯一（單筆查詢）
-db.activity_logs.createIndex(
+db.activity_log.createIndex(
   { activity_id: 1 },
   { name: "ux_activity_id", unique: true }
 );
 
 // 2) 同鏈事件倒序（同一 chain 瀏覽最新）
-db.activity_logs.createIndex(
+db.activity_log.createIndex(
   { chain_id: 1, occurred_at: -1 },
   {
     name: "ix_chain_occ_desc",
@@ -84,14 +84,14 @@ db.activity_logs.createIndex(
 );
 
 // 3) 依型別 + 時間的常規查詢/報表
-db.activity_logs.createIndex(
+db.activity_log.createIndex(
   { activity_type: 1, occurred_at: -1 },
   { name: "ix_type_occ_desc" }
 );
 
 // ✅ 4) 參與者 + 時間倒序（主力索引，用於 array membership）
 // MongoDB 對陣列欄位會做 multikey index，支援 $in / 直接等值（陣列包含值）查詢
-db.activity_logs.createIndex(
+db.activity_log.createIndex(
   { participants: 1, occurred_at: -1 },
   {
     name: "ix_participants_occ_desc",
